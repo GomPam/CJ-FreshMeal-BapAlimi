@@ -22,6 +22,11 @@
 
     <!-- 식단 뷰 -->
     <main id="view-meal">
+      <div id="update-banner" class="update-banner" style="display:none;">
+        <span>새 버전이 있습니다!</span>
+        <button id="btn-banner-update" class="small-btn">업데이트</button>
+        <button id="btn-banner-dismiss" class="banner-dismiss">&times;</button>
+      </div>
       <nav class="date-nav">
         <button id="btn-prev-day" class="date-nav-btn">&lsaquo;</button>
         <span id="date-label" class="date-label"></span>
@@ -62,7 +67,10 @@
     <!-- 식당 검색 모달 (최초 실행) -->
     <div id="store-modal" class="modal" style="display:none;">
       <div class="modal-content" style="max-width:380px;">
-        <h3>식당 검색</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h3>식당 검색</h3>
+          <button id="btn-close-store-modal" class="banner-dismiss" title="닫기">&times;</button>
+        </div>
         <p>식단을 조회할 식당을 검색하세요.</p>
         <div class="store-search-box">
           <div class="store-search-input-wrap">
@@ -102,6 +110,14 @@
 
       <div class="settings-section">
         <div class="settings-section-header">
+          <h2>창 위치</h2>
+          <button id="btn-reset-position" class="accent-btn">위치 초기화</button>
+        </div>
+        <p class="hint">드래그로 창 위치를 이동할 수 있습니다.</p>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-header">
           <h2>식당 설정</h2>
         </div>
         <div id="store-current" class="store-current">
@@ -119,12 +135,15 @@
             <button id="btn-logout" class="auth-disconnect" title="연결 해제" style="display:none;">&#10005;</button>
           </div>
         </div>
-        <button id="btn-login" class="primary-btn auth-login-btn">로그인</button>
+        <button id="btn-login" class="accent-btn auth-login-btn">로그인</button>
 
         <!-- 로그인 Device Code -->
         <div id="login-modal" class="modal" style="display:none;">
           <div class="modal-content">
-            <h3>Teams 로그인</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <h3>Teams 로그인</h3>
+              <button id="btn-close-login-modal" class="banner-dismiss" title="닫기">&times;</button>
+            </div>
             <p>아래 URL에 접속하여 코드를 입력하세요.</p>
             <div class="device-code-box">
               <a id="login-url" href="#" target="_blank">https://microsoft.com/devicelogin</a>
@@ -134,7 +153,7 @@
               </div>
             </div>
             <p id="login-status" class="subtle" style="margin-top:12px;">인증 대기 중...</p>
-            <button id="btn-cancel-login" class="text-btn">취소</button>
+            <button id="btn-cancel-login" style="display:none;"></button>
           </div>
         </div>
 
@@ -156,6 +175,34 @@
             <button id="btn-open-logs" class="accent-btn">전송 로그</button>
           </div>
           <p id="schedule-status" class="subtle" style="margin-top:8px;"></p>
+        </div>
+      </div>
+
+      <div class="settings-section" id="update-section">
+        <div class="settings-section-header">
+          <h2>앱 업데이트</h2>
+          <span id="app-version" class="subtle"></span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span id="update-message" class="subtle"></span>
+          <button id="btn-check-update" class="accent-btn">업데이트 확인</button>
+        </div>
+        <div id="update-available" class="update-available" style="display:none;">
+          <div class="update-info">
+            <span class="update-new-version" id="update-new-version"></span>
+            <span class="update-date subtle" id="update-date"></span>
+          </div>
+          <p id="update-notes" class="update-notes"></p>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button id="btn-do-update" class="primary-btn">업데이트 설치</button>
+            <button id="btn-release-page" class="accent-btn">릴리스 페이지</button>
+          </div>
+        </div>
+        <div id="update-progress" class="update-progress" style="display:none;">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="update-progress-bar"></div>
+          </div>
+          <span id="update-progress-text" class="subtle"></span>
         </div>
       </div>
     </main>

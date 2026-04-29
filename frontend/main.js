@@ -152,11 +152,12 @@ function enterSettings() {
   if (API) API.SetAlwaysOnTop(true);
   checkAuthStatus();
   loadAutoStart();
+  loadAppVersion();
 }
 
 function exitSettings() {
   document.getElementById('view-settings').style.display = 'none';
-  document.getElementById('view-meal').style.display = 'block';
+  document.getElementById('view-meal').style.display = '';
   document.getElementById('btn-close-settings').style.display = 'none';
   document.getElementById('btn-reset-all').style.display = 'none';
   document.getElementById('btn-settings').style.display = 'inline-block';
@@ -189,6 +190,10 @@ document.getElementById('btn-cancel-login').addEventListener('click', () => {
   document.getElementById('login-modal').style.display = 'none';
   loginMode = false;
   if (!settingsMode && API) API.SetAlwaysOnTop(false);
+});
+
+document.getElementById('btn-close-login-modal').addEventListener('click', () => {
+  document.getElementById('btn-cancel-login').click();
 });
 
 document.getElementById('btn-test-send').addEventListener('click', testSend);
@@ -406,7 +411,7 @@ async function checkAuthStatus() {
   } catch (e) {
     console.error(e);
   }
-  document.getElementById('teams-section').style.display = 'block';
+  document.getElementById('teams-section').style.display = '';
 }
 
 async function loadSavedConfig() {
@@ -490,6 +495,9 @@ async function doLogout() {
   try {
     await API.Logout();
     state.loggedIn = false;
+    selectedTargets = [];
+    renderTargetChips();
+    setTimeRows(cachedDefaultTimes);
     updateAuthUI();
   } catch (e) {
     console.error(e);
@@ -797,7 +805,10 @@ document.getElementById('btn-reset-all').addEventListener('click', () => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (document.getElementById('confirm-modal').style.display === 'flex') return;
-    if (document.getElementById('login-modal').style.display === 'flex') return;
+    const storeModal = document.getElementById('store-modal');
+    if (storeModal.style.display === 'flex') { storeModal.style.display = 'none'; return; }
+    const loginModal = document.getElementById('login-modal');
+    if (loginModal.style.display === 'flex') { document.getElementById('btn-cancel-login').click(); return; }
     if (settingsMode) { exitSettings(); return; }
     if (API) API.HideWindow();
   }
@@ -970,6 +981,11 @@ function setupStoreSearch(inputId, btnId, resultsId, pagingId) {
 
 setupStoreSearch('store-modal-search', 'store-modal-search-btn', 'store-modal-results', 'store-modal-paging');
 
+document.getElementById('btn-reset-position').addEventListener('click', () => {
+  if (!API) return;
+  API.ResetWindowPosition();
+});
+
 document.getElementById('btn-change-store').addEventListener('click', () => {
   document.getElementById('store-modal').style.display = 'flex';
   document.getElementById('store-modal-search').value = '';
@@ -977,6 +993,113 @@ document.getElementById('btn-change-store').addEventListener('click', () => {
   document.getElementById('store-modal-paging').style.display = 'none';
   document.getElementById('store-modal-search').focus();
 });
+
+document.getElementById('btn-close-store-modal').addEventListener('click', () => {
+  document.getElementById('store-modal').style.display = 'none';
+});
+
+// --- Update ---
+let pendingUpdateInfo = null;
+
+async function loadAppVersion() {
+  if (!API) return;
+  try {
+    const ver = await API.GetAppVersion();
+    document.getElementById('app-version').textContent = ver ? 'v' + ver : '';
+  } catch (_) {}
+}
+
+async function checkForUpdate(silent) {
+  if (!API) return;
+  const msgEl = document.getElementById('update-message');
+  const availEl = document.getElementById('update-available');
+  const progressEl = document.getElementById('update-progress');
+
+  if (!silent) msgEl.textContent = '확인 중...';
+  availEl.style.display = 'none';
+  progressEl.style.display = 'none';
+
+  try {
+    const info = await API.CheckForUpdate();
+    pendingUpdateInfo = info;
+
+    if (info && info.available) {
+      document.getElementById('update-new-version').textContent = 'v' + info.latestVer;
+      document.getElementById('update-notes').textContent = info.releaseNote || '';
+      availEl.style.display = 'block';
+      msgEl.textContent = '';
+
+      if (silent) {
+        const banner = document.getElementById('update-banner');
+        banner.style.display = 'flex';
+      }
+    } else {
+      if (!silent) msgEl.textContent = '최신 버전입니다.';
+    }
+  } catch (e) {
+    if (!silent) msgEl.textContent = '확인 실패: ' + (e.message || e);
+  }
+}
+
+async function performUpdate() {
+  if (!pendingUpdateInfo || !pendingUpdateInfo.downloadUrl) return;
+  const progressEl = document.getElementById('update-progress');
+  const bar = document.getElementById('update-progress-bar');
+  const text = document.getElementById('update-progress-text');
+  progressEl.style.display = 'block';
+  bar.style.width = '0%';
+  text.textContent = '다운로드 준비 중...';
+
+  try {
+    await API.PerformUpdate(pendingUpdateInfo.downloadUrl);
+  } catch (e) {
+    text.textContent = '업데이트 실패: ' + (e.message || e);
+  }
+}
+
+document.getElementById('btn-check-update').addEventListener('click', () => checkForUpdate(false));
+
+document.getElementById('btn-do-update').addEventListener('click', () => {
+  showConfirm('업데이트 설치', '새 버전을 설치하면 앱이 재시작됩니다. 진행하시겠습니까?', performUpdate);
+});
+
+document.getElementById('btn-release-page').addEventListener('click', () => {
+  if (pendingUpdateInfo && pendingUpdateInfo.releaseUrl && API) {
+    API.OpenReleasePage(pendingUpdateInfo.releaseUrl);
+  }
+});
+
+document.getElementById('btn-banner-update').addEventListener('click', () => {
+  document.getElementById('update-banner').style.display = 'none';
+  enterSettings();
+  document.getElementById('update-section').scrollIntoView({ behavior: 'smooth' });
+});
+
+document.getElementById('btn-banner-dismiss').addEventListener('click', () => {
+  document.getElementById('update-banner').style.display = 'none';
+});
+
+if (window.runtime) {
+  window.runtime.EventsOn('update:progress', (data) => {
+    const bar = document.getElementById('update-progress-bar');
+    const text = document.getElementById('update-progress-text');
+    if (data && bar && text) {
+      bar.style.width = data.percent + '%';
+      text.textContent = data.message || '';
+    }
+  });
+
+  window.runtime.EventsOn('check:update', () => {
+    enterSettings();
+    setTimeout(() => {
+      document.getElementById('update-section').scrollIntoView({ behavior: 'smooth' });
+      checkForUpdate(false);
+    }, 100);
+  });
+}
+
+setTimeout(() => checkForUpdate(true), 60 * 60 * 1000);
+setInterval(() => checkForUpdate(true), 6 * 60 * 60 * 1000);
 
 // --- Init ---
 loadOperationalConfig().then(() => {
