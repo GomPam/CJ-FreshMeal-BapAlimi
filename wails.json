@@ -1,0 +1,23 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "CJ-BapAlimi",
+  "outputfilename": "CJ-BapAlimi",
+  "frontend:install": "",
+  "frontend:build": "",
+  "frontend:dev:watcher": "",
+  "frontend:dev:serverUrl": "",
+  "author": {
+    "name": "GomPam",
+    "email": ""
+  },
+  "info": {
+    "companyName": "GomPam",
+    "productName": "CJ-BapAlimi",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright 2026 GomPam",
+    "comments": "CJ 프레시밀 식단 알리미"
+  },
+  "nsisType": "",
+  "obfuscated": false,
+  "garbleargs": ""
+}
