@@ -27,6 +27,10 @@ var (
 	procSetWindowLong        = user32.NewProc("SetWindowLongW")
 	procSetWindowPos         = user32.NewProc("SetWindowPos")
 	procSystemParametersInfo = user32.NewProc("SystemParametersInfoW")
+	procGetCursorPos         = user32.NewProc("GetCursorPos")
+	procMonitorFromPoint     = user32.NewProc("MonitorFromPoint")
+	procGetMonitorInfo       = user32.NewProc("GetMonitorInfoW")
+	procGetWindowRect        = user32.NewProc("GetWindowRect")
 	initOnce                 sync.Once
 	appHwnd                  uintptr
 )
@@ -35,12 +39,24 @@ type winRECT struct {
 	Left, Top, Right, Bottom int32
 }
 
+type winPOINT struct {
+	X, Y int32
+}
+
+type monitorInfo struct {
+	CbSize    uint32
+	RcMonitor winRECT
+	RcWork    winRECT
+	DwFlags   uint32
+}
+
 const (
-	wsExToolWindow = 0x00000080
-	wsExAppWindow  = 0x00040000
-	wsThickFrame   = 0x00040000
-	gwlStyleVal    = ^uintptr(15) // GWL_STYLE = -16
-	gwlExStyleVal  = ^uintptr(19) // GWL_EXSTYLE = -20
+	wsExToolWindow       = 0x00000080
+	wsExAppWindow        = 0x00040000
+	wsThickFrame         = 0x00040000
+	gwlStyleVal          = ^uintptr(15) // GWL_STYLE = -16
+	gwlExStyleVal        = ^uintptr(19) // GWL_EXSTYLE = -20
+	monitorDefaultNearest = 0x00000002
 )
 
 func findAppHwnd() uintptr {
@@ -76,7 +92,7 @@ func (a *App) setupTray() {
 
 func (a *App) onTrayReady() {
 	systray.SetIcon(createTrayIcon())
-	systray.SetTooltip("밥알리미")
+	systray.SetTooltip("밥알리미 v" + appVersion)
 
 	systray.SetOnClick(func(menu systray.IMenu) {
 		a.toggleWindow()
@@ -84,6 +100,7 @@ func (a *App) onTrayReady() {
 
 	mShow := systray.AddMenuItem("앱 표시", "앱 표시")
 	mSettings := systray.AddMenuItem("설정", "설정")
+	mUpdate := systray.AddMenuItem("업데이트 확인", "업데이트 확인")
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("종료", "종료")
 
@@ -91,6 +108,11 @@ func (a *App) onTrayReady() {
 	mSettings.Click(func() {
 		a.showWindowNearTray()
 		wailsRuntime.EventsEmit(a.ctx, "show:settings")
+	})
+	mUpdate.Click(func() {
+		a.showWindowNearTray()
+		wailsRuntime.EventsEmit(a.ctx, "show:settings")
+		wailsRuntime.EventsEmit(a.ctx, "check:update")
 	})
 	mQuit.Click(func() { a.QuitApp() })
 }
@@ -114,6 +136,7 @@ func (a *App) toggleWindow() {
 	a.mu.Unlock()
 
 	if visible {
+		a.saveWindowPosition()
 		wailsRuntime.WindowHide(a.ctx)
 		a.mu.Lock()
 		a.windowVisible = false
@@ -123,21 +146,59 @@ func (a *App) toggleWindow() {
 	}
 }
 
-func getPrimaryWorkArea() (left, top, right, bottom int) {
+func getWorkAreaNearCursor() (left, top, right, bottom int) {
+	var pt winPOINT
+	procGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
+
+	hMon, _, _ := procMonitorFromPoint.Call(uintptr(pt.X), uintptr(pt.Y), monitorDefaultNearest)
+	if hMon != 0 {
+		var mi monitorInfo
+		mi.CbSize = uint32(unsafe.Sizeof(mi))
+		ret, _, _ := procGetMonitorInfo.Call(hMon, uintptr(unsafe.Pointer(&mi)))
+		if ret != 0 {
+			return int(mi.RcWork.Left), int(mi.RcWork.Top), int(mi.RcWork.Right), int(mi.RcWork.Bottom)
+		}
+	}
 	var rect winRECT
 	procSystemParametersInfo.Call(0x0030, 0, uintptr(unsafe.Pointer(&rect)), 0)
 	return int(rect.Left), int(rect.Top), int(rect.Right), int(rect.Bottom)
 }
 
-func (a *App) showWindowNearTray() {
-	left, _, right, bottom := getPrimaryWorkArea()
-	x := right - 420
-	y := bottom - 680
-	if x < left {
-		x = left
+func (a *App) saveWindowPosition() {
+	if a.config == nil {
+		return
 	}
-	if y < 0 {
-		y = 0
+	hwnd := findAppHwnd()
+	if hwnd == 0 {
+		return
+	}
+	var rect winRECT
+	ret, _, _ := procGetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&rect)))
+	if ret == 0 {
+		return
+	}
+	a.config.WindowX = int(rect.Left)
+	a.config.WindowY = int(rect.Top)
+	a.config.HasWindowPos = true
+	a.saveConfig()
+}
+
+func (a *App) showWindowNearTray() {
+	var x, y int
+
+	if a.config != nil && a.config.HasWindowPos {
+		x = a.config.WindowX
+		y = a.config.WindowY
+	} else {
+		left, top, right, bottom := getWorkAreaNearCursor()
+		x = right - 420
+		y = bottom - 680
+		if x < left {
+			x = left
+		}
+		if y < top {
+			y = top
+		}
 	}
 
 	wailsRuntime.WindowShow(a.ctx)
@@ -161,10 +222,35 @@ func (a *App) SetAlwaysOnTop(onTop bool) {
 }
 
 func (a *App) HideWindow() {
+	a.saveWindowPosition()
 	wailsRuntime.WindowHide(a.ctx)
 	a.mu.Lock()
 	a.windowVisible = false
 	a.mu.Unlock()
+}
+
+func (a *App) ResetWindowPosition() {
+	if a.config != nil {
+		a.config.HasWindowPos = false
+		a.config.WindowX = 0
+		a.config.WindowY = 0
+		a.saveConfig()
+	}
+	left, top, right, bottom := getWorkAreaNearCursor()
+	x := right - 420
+	y := bottom - 680
+	if x < left {
+		x = left
+	}
+	if y < top {
+		y = top
+	}
+	hwnd := findAppHwnd()
+	if hwnd != 0 {
+		const swpNoSize = 0x0001
+		const swpShowWindow = 0x0040
+		procSetWindowPos.Call(hwnd, 0, uintptr(x), uintptr(y), 0, 0, swpNoSize|swpShowWindow)
+	}
 }
 
 func createTrayIcon() []byte {
