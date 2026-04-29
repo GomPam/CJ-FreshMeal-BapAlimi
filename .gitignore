@@ -1,0 +1,15 @@
+# Build output
+build/bin/
+*.exe
+
+# Go
+go.sum
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
