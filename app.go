@@ -23,6 +23,8 @@ import (
 
 const appTitle = "BapAlimi"
 
+var appVersion = "dev"
+
 const (
 	msalClientID  = "14d82eec-204b-4c2f-b7e8-296a70dab67e"
 	msalAuthority = "https://login.microsoftonline.com/organizations"
@@ -97,10 +99,13 @@ type ConfigTarget struct {
 }
 
 type AppConfig struct {
-	StoreIdx  string         `json:"storeIdx"`
-	StoreName string         `json:"storeName"`
-	Targets   []ConfigTarget `json:"targets"`
-	Times     []string       `json:"times"`
+	StoreIdx     string         `json:"storeIdx"`
+	StoreName    string         `json:"storeName"`
+	Targets      []ConfigTarget `json:"targets"`
+	Times        []string       `json:"times"`
+	WindowX      int            `json:"windowX,omitempty"`
+	WindowY      int            `json:"windowY,omitempty"`
+	HasWindowPos bool           `json:"hasWindowPos,omitempty"`
 }
 
 type StoreSearchResult struct {
@@ -144,6 +149,10 @@ func (a *App) GetMealEndHours() map[string]int {
 
 func (a *App) GetThumbRefreshWindows() []map[string]int {
 	return thumbRefreshWindows
+}
+
+func (a *App) GetAppVersion() string {
+	return appVersion
 }
 
 func NewApp() *App {
@@ -218,6 +227,7 @@ func (a *App) saveSentRecords() {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.cleanupOldBinary()
 	a.initMSAL()
 	a.loadConfig()
 	a.loadSentRecords()
@@ -402,6 +412,19 @@ func (a *App) Logout() error {
 	a.loggedIn = false
 	a.account = public.Account{}
 	os.Remove(a.configPath("token_cache.json"))
+
+	a.mu.Lock()
+	if a.stopCh != nil {
+		close(a.stopCh)
+		a.stopCh = nil
+	}
+	if a.config != nil {
+		a.config.Targets = nil
+		a.config.Times = nil
+	}
+	a.mu.Unlock()
+	a.saveConfig()
+
 	return nil
 }
 
@@ -685,20 +708,17 @@ func (a *App) buildAdaptiveCard(data map[string]interface{}) string {
 				"type": "Column", "width": "stretch",
 				"items": []interface{}{map[string]interface{}{"type": "TextBlock", "text": name, "wrap": true, "size": "Medium"}},
 			}
-			kcalCol := map[string]interface{}{
-				"type": "Column", "width": "auto", "verticalContentAlignment": "Center",
-				"items": []interface{}{map[string]interface{}{"type": "TextBlock", "text": "", "size": "Small"}},
-			}
+			columns := []interface{}{nameCol}
 			if kcalVal > 0 {
-				kcalCol["items"] = []interface{}{map[string]interface{}{"type": "TextBlock", "text": fmt.Sprintf("📊 %.0f kcal", kcalVal), "isSubtle": true, "size": "Small", "horizontalAlignment": "Right"}}
+				columns = append(columns, map[string]interface{}{
+					"type": "Column", "width": "auto", "verticalContentAlignment": "Center",
+					"items": []interface{}{map[string]interface{}{"type": "TextBlock", "text": fmt.Sprintf("📊 %.0f kcal", kcalVal), "isSubtle": true, "size": "Small", "horizontalAlignment": "Right"}},
+				})
 			}
-			contentItems = append(contentItems, map[string]interface{}{"type": "ColumnSet", "spacing": "None", "columns": []interface{}{nameCol, kcalCol}})
+			contentItems = append(contentItems, map[string]interface{}{"type": "ColumnSet", "spacing": "None", "columns": columns})
 			if side != "" {
-				contentItems = append(contentItems, map[string]interface{}{"type": "TextBlock", "text": side, "isSubtle": true, "wrap": true, "size": "Small"})
+				contentItems = append(contentItems, map[string]interface{}{"type": "TextBlock", "text": side, "isSubtle": true, "wrap": true, "size": "Small", "spacing": "Small"})
 			}
-			contentItems = append(contentItems, map[string]interface{}{
-				"type": "TextBlock", "text": " ", "spacing": "Small",
-			})
 		}
 
 		bodyItems = append(bodyItems, map[string]interface{}{
@@ -726,10 +746,11 @@ func (a *App) SetSchedule(targetsJSON, times string) error {
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.config = &AppConfig{
-		Targets: targets,
-		Times:   strings.Split(times, ","),
+	if a.config == nil {
+		a.config = &AppConfig{}
 	}
+	a.config.Targets = targets
+	a.config.Times = strings.Split(times, ",")
 	if err := a.saveConfig(); err != nil {
 		return err
 	}
