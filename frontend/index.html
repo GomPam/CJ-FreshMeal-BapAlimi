@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CJ-BapAlimi</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="header-left">
+        <span class="logo"><img src="https://play-lh.googleusercontent.com/DURIk3m800RIRhZvQ8nmFDKvdKZuNIdIBBOa9ogjSbVLVqTO7oviFfqyrwlrhku73-o=w240-h480" alt="프레시밀"></span>
+        <h1>밥알리미</h1>
+      </div>
+      <div class="header-right">
+        <button id="btn-reset-all" class="icon-btn danger" title="설정 초기화" style="display:none;">&#8634;</button>
+        <button id="btn-settings" class="icon-btn" title="설정">&#9881;</button>
+        <button id="btn-close-settings" class="icon-btn" title="닫기" style="display:none;">&#10005;</button>
+      </div>
+    </header>
+
+    <!-- 식단 뷰 -->
+    <main id="view-meal">
+      <nav class="date-nav">
+        <button id="btn-prev-day" class="date-nav-btn">&lsaquo;</button>
+        <span id="date-label" class="date-label"></span>
+        <button id="btn-next-day" class="date-nav-btn">&rsaquo;</button>
+      </nav>
+
+      <div id="meal-content" class="meal-content">
+        <div class="meal-section" id="section-breakfast" data-end-hour="10">
+          <h2 class="meal-header">🌅 조식 <span class="collapse-icon">⌃</span></h2>
+          <div class="meal-cards"></div>
+        </div>
+        <div class="meal-section" id="section-lunch" data-end-hour="14">
+          <h2 class="meal-header">☀️ 중식 <span class="collapse-icon">⌃</span></h2>
+          <div class="meal-cards"></div>
+        </div>
+        <div class="meal-section" id="section-dinner" data-end-hour="20">
+          <h2 class="meal-header">🌙 석식 <span class="collapse-icon">⌃</span></h2>
+          <div class="meal-cards"></div>
+        </div>
+        <div id="meal-empty" class="empty-state" style="display:none;">
+          <p>식단 정보가 없습니다.</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- 확인 모달 -->
+    <div id="confirm-modal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <h3 id="confirm-title">확인</h3>
+        <p id="confirm-message"></p>
+        <div class="modal-actions">
+          <button id="btn-confirm-cancel" class="small-btn">취소</button>
+          <button id="btn-confirm-ok" class="small-btn danger-btn">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 식당 검색 모달 (최초 실행) -->
+    <div id="store-modal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width:380px;">
+        <h3>식당 검색</h3>
+        <p>식단을 조회할 식당을 검색하세요.</p>
+        <div class="store-search-box">
+          <div class="store-search-input-wrap">
+            <input type="text" id="store-modal-search" placeholder="식당명 또는 지역 검색..." autocomplete="off">
+            <button id="store-modal-search-btn" class="accent-btn">검색</button>
+          </div>
+          <div id="store-modal-results" class="store-results"></div>
+          <div id="store-modal-paging" class="store-paging" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 설정 뷰 -->
+    <main id="view-settings" style="display:none;">
+      <div class="settings-section">
+        <h2>테마</h2>
+        <div class="custom-select" id="theme-select-wrap">
+          <div class="custom-select-trigger" id="theme-trigger">시스템 설정</div>
+          <div class="custom-select-list" id="theme-list">
+            <div class="custom-select-item" data-value="system">시스템 설정</div>
+            <div class="custom-select-item" data-value="light">라이트</div>
+            <div class="custom-select-item" data-value="dark">다크</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-header">
+          <h2>시작 프로그램 등록</h2>
+          <label class="toggle">
+            <input type="checkbox" id="chk-autostart">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <p class="hint">Windows 시작 시 자동 실행</p>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-header">
+          <h2>식당 설정</h2>
+        </div>
+        <div id="store-current" class="store-current">
+          <span id="store-current-name" class="store-current-name">설정 안 됨</span>
+          <button id="btn-change-store" class="accent-btn">변경</button>
+        </div>
+      </div>
+
+      <div class="settings-section" id="teams-section" style="display:none;">
+        <div class="settings-section-header">
+          <h2>Teams 연동 <span id="save-spinner" class="spinner" style="display:none;"></span></h2>
+          <div id="auth-state" class="auth-state">
+            <span id="auth-dot" class="auth-dot"></span>
+            <span id="auth-state-text">연결 안 됨</span>
+            <button id="btn-logout" class="auth-disconnect" title="연결 해제" style="display:none;">&#10005;</button>
+          </div>
+        </div>
+        <button id="btn-login" class="primary-btn auth-login-btn">로그인</button>
+
+        <!-- 로그인 Device Code -->
+        <div id="login-modal" class="modal" style="display:none;">
+          <div class="modal-content">
+            <h3>Teams 로그인</h3>
+            <p>아래 URL에 접속하여 코드를 입력하세요.</p>
+            <div class="device-code-box">
+              <a id="login-url" href="#" target="_blank">https://microsoft.com/devicelogin</a>
+              <div class="code-display">
+                <span id="login-code">--------</span>
+                <button id="btn-copy-code" class="small-btn">복사</button>
+              </div>
+            </div>
+            <p id="login-status" class="subtle" style="margin-top:12px;">인증 대기 중...</p>
+            <button id="btn-cancel-login" class="text-btn">취소</button>
+          </div>
+        </div>
+
+        <div id="teams-config" style="display:none;">
+          <div class="form-group">
+            <label>전송 대상</label>
+            <div class="target-chips" id="target-chips"></div>
+            <div class="custom-select" id="target-select">
+              <input type="text" id="target-search" placeholder="검색 또는 추가..." autocomplete="off">
+              <div class="custom-select-list" id="target-list"></div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>전송 시간</label>
+            <div class="time-chips" id="time-chips"></div>
+            <p class="hint">중식은 11:15 이후, 석식은 17:15 이후 썸네일이 갱신됩니다.<br>오늘 전송된 메시지가 있을 경우, 과거 메시지를 삭제하고 재전송됩니다.</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="btn-test-send" class="accent-btn">테스트 전송</button>
+            <button id="btn-open-logs" class="accent-btn">전송 로그</button>
+          </div>
+          <p id="schedule-status" class="subtle" style="margin-top:8px;"></p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
