@@ -18,12 +18,20 @@ export function GetAutoStart() {
   return window['go']['main']['App']['GetAutoStart']();
 }
 
+export function GetDefaultTimes() {
+  return window['go']['main']['App']['GetDefaultTimes']();
+}
+
 export function GetLogFile() {
   return window['go']['main']['App']['GetLogFile']();
 }
 
 export function GetLogs() {
   return window['go']['main']['App']['GetLogs']();
+}
+
+export function GetMealEndHours() {
+  return window['go']['main']['App']['GetMealEndHours']();
 }
 
 export function GetSavedConfig() {
@@ -36,6 +44,10 @@ export function GetSchedule() {
 
 export function GetStoreConfig() {
   return window['go']['main']['App']['GetStoreConfig']();
+}
+
+export function GetThumbRefreshWindows() {
+  return window['go']['main']['App']['GetThumbRefreshWindows']();
 }
 
 export function GetTodayMeal() {

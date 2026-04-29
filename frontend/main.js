@@ -63,6 +63,33 @@ const DAY_KEYS = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 const MEAL_LABELS = { '1': '조식', '2': '중식', '3': '석식' };
 
+let cachedDefaultTimes = null;
+let cachedMealEndHours = null;
+let cachedThumbRefreshWindows = null;
+
+async function loadOperationalConfig() {
+  if (!API) return;
+  try {
+    const [times, endHours, refreshWindows] = await Promise.all([
+      API.GetDefaultTimes(),
+      API.GetMealEndHours(),
+      API.GetThumbRefreshWindows(),
+    ]);
+    if (times) cachedDefaultTimes = times;
+    if (endHours) cachedMealEndHours = endHours;
+    if (refreshWindows) cachedThumbRefreshWindows = refreshWindows;
+
+    document.querySelectorAll('.meal-section[data-meal-code]').forEach(section => {
+      const code = section.dataset.mealCode;
+      if (cachedMealEndHours[code] != null) {
+        section.dataset.endHour = cachedMealEndHours[code];
+      }
+    });
+  } catch (e) {
+    console.error('Failed to load operational config:', e);
+  }
+}
+
 let state = {
   loggedIn: false,
 };
@@ -272,8 +299,8 @@ document.querySelectorAll('.meal-header').forEach(header => {
 
 function updateMealCollapse() {
   const isToday = viewDate.getTime() === getToday().getTime();
-  document.querySelectorAll('.meal-section[data-end-hour]').forEach(section => {
-    const endHour = parseInt(section.dataset.endHour);
+  document.querySelectorAll('.meal-section[data-meal-code]').forEach(section => {
+    const endHour = parseInt(section.dataset.endHour || 24);
     if (isToday && new Date().getHours() >= endHour) {
       section.classList.add('collapsed');
     } else {
@@ -386,12 +413,11 @@ async function loadSavedConfig() {
   if (!API) return;
   try {
     const cfg = await API.GetSavedConfig();
-    const defaultTimes = ['11:20', '17:20'];
     if (!cfg) {
-      setTimeRows(defaultTimes);
+      setTimeRows(cachedDefaultTimes);
       return;
     }
-    setTimeRows(cfg.times && cfg.times.length > 0 ? cfg.times : defaultTimes);
+    setTimeRows(cfg.times && cfg.times.length > 0 ? cfg.times : cachedDefaultTimes);
     if (cfg.targets && cfg.targets.length > 0) {
       selectedTargets = cfg.targets.map(t => ({
         ID: t.id, Name: t.name, Type: t.type, Group: t.group || ''
@@ -400,7 +426,7 @@ async function loadSavedConfig() {
     }
   } catch (e) {
     console.error('Failed to load config:', e);
-    setTimeRows(['11:20', '17:20']);
+    setTimeRows(cachedDefaultTimes);
   }
 }
 
@@ -755,7 +781,7 @@ document.getElementById('btn-reset-all').addEventListener('click', () => {
     await API.ResetAll();
     selectedTargets = [];
     renderTargetChips();
-    setTimeRows(['11:20', '17:20']);
+    setTimeRows(cachedDefaultTimes);
     document.getElementById('chk-autostart').checked = false;
     document.getElementById('store-current-name').textContent = '설정 안 됨';
     document.querySelectorAll('.meal-cards').forEach(el => { el.innerHTML = ''; });
@@ -816,9 +842,7 @@ let thumbPollTimer = null;
 function checkThumbPoll() {
   const now = new Date();
   const hm = now.getHours() * 60 + now.getMinutes();
-  const lunchStart = 11 * 60 + 15, lunchEnd = 11 * 60 + 35;
-  const dinnerStart = 17 * 60 + 15, dinnerEnd = 17 * 60 + 35;
-  const inWindow = (hm >= lunchStart && hm <= lunchEnd) || (hm >= dinnerStart && hm <= dinnerEnd);
+  const inWindow = (cachedThumbRefreshWindows || []).some(w => hm >= w.start && hm <= w.end);
 
   if (inWindow && !thumbPollTimer) {
     thumbPollTimer = setInterval(() => {
@@ -833,9 +857,6 @@ function checkThumbPoll() {
     thumbPollTimer = null;
   }
 }
-setInterval(checkThumbPoll, 60000);
-checkThumbPoll();
-
 // --- Store search ---
 let storeSearchPage = 1;
 let storeSearchKeyword = '';
@@ -958,7 +979,11 @@ document.getElementById('btn-change-store').addEventListener('click', () => {
 });
 
 // --- Init ---
-setTimeRows(['11:20', '17:20']);
-updateDateLabel();
-loadStoreConfig();
-loadMealForDate();
+loadOperationalConfig().then(() => {
+  setTimeRows(cachedDefaultTimes);
+  updateDateLabel();
+  loadStoreConfig();
+  loadMealForDate();
+  checkThumbPoll();
+  setInterval(checkThumbPoll, 60000);
+});

@@ -10,15 +10,21 @@ export function GetAllTargets():Promise<Array<main.SendTarget>>;
 
 export function GetAutoStart():Promise<boolean>;
 
+export function GetDefaultTimes():Promise<Array<string>>;
+
 export function GetLogFile():Promise<string>;
 
 export function GetLogs():Promise<Array<main.LogEntry>>;
+
+export function GetMealEndHours():Promise<Record<string, number>>;
 
 export function GetSavedConfig():Promise<main.AppConfig>;
 
 export function GetSchedule():Promise<main.Schedule>;
 
 export function GetStoreConfig():Promise<Record<string, string>>;
+
+export function GetThumbRefreshWindows():Promise<Array<Record<string, number>>>;
 
 export function GetTodayMeal():Promise<Record<string, any>>;
 

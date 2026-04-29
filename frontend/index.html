@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CJ-BapAlimi</title>
+  <title>BapAlimi</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -29,15 +29,15 @@
       </nav>
 
       <div id="meal-content" class="meal-content">
-        <div class="meal-section" id="section-breakfast" data-end-hour="10">
+        <div class="meal-section" id="section-breakfast" data-meal-code="1">
           <h2 class="meal-header">🌅 조식 <span class="collapse-icon">⌃</span></h2>
           <div class="meal-cards"></div>
         </div>
-        <div class="meal-section" id="section-lunch" data-end-hour="14">
+        <div class="meal-section" id="section-lunch" data-meal-code="2">
           <h2 class="meal-header">☀️ 중식 <span class="collapse-icon">⌃</span></h2>
           <div class="meal-cards"></div>
         </div>
-        <div class="meal-section" id="section-dinner" data-end-hour="20">
+        <div class="meal-section" id="section-dinner" data-meal-code="3">
           <h2 class="meal-header">🌙 석식 <span class="collapse-icon">⌃</span></h2>
           <div class="meal-cards"></div>
         </div>
@@ -150,7 +150,6 @@
           <div class="form-group">
             <label>전송 시간</label>
             <div class="time-chips" id="time-chips"></div>
-            <p class="hint">중식은 11:15 이후, 석식은 17:15 이후 썸네일이 갱신됩니다.<br>오늘 전송된 메시지가 있을 경우, 과거 메시지를 삭제하고 재전송됩니다.</p>
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
             <button id="btn-test-send" class="accent-btn">테스트 전송</button>

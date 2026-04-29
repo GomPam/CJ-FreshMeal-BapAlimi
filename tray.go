@@ -47,7 +47,7 @@ func findAppHwnd() uintptr {
 	if appHwnd != 0 {
 		return appHwnd
 	}
-	titlePtr, _ := syscall.UTF16PtrFromString("CJ-BapAlimi")
+	titlePtr, _ := syscall.UTF16PtrFromString(appTitle)
 	hwnd, _, _ := procFindWindow.Call(0, uintptr(unsafe.Pointer(titlePtr)))
 	if hwnd != 0 {
 		appHwnd = hwnd
@@ -76,7 +76,7 @@ func (a *App) setupTray() {
 
 func (a *App) onTrayReady() {
 	systray.SetIcon(createTrayIcon())
-	systray.SetTooltip("CJ-밥알리미")
+	systray.SetTooltip("밥알리미")
 
 	systray.SetOnClick(func(menu systray.IMenu) {
 		a.toggleWindow()

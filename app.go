@@ -21,6 +21,8 @@ import (
 	"github.com/energye/systray"
 )
 
+const appTitle = "BapAlimi"
+
 const (
 	msalClientID  = "14d82eec-204b-4c2f-b7e8-296a70dab67e"
 	msalAuthority = "https://login.microsoftonline.com/organizations"
@@ -32,6 +34,27 @@ const (
 var msalScopes = []string{
 	"Chat.ReadWrite",
 }
+
+// --- 운영 설정 (회사/운영 방침에 따라 조정) ---
+
+var (
+	// 기본 전송 시간 (최초 설치 또는 설정 초기화 시 적용)
+	defaultSendTimes = []string{"11:20", "17:20"}
+
+	// 식사 종료 시간 (시, 해당 시간 이후 UI 접힘 및 Adaptive Card 흐림 처리)
+	mealEndHours = map[string]int{
+		"1": 10, // 조식
+		"2": 14, // 중식
+		"3": 20, // 석식
+	}
+
+	// 썸네일 자동 갱신 시간대 (분, 자정 기준)
+	// 해당 시간대에 오늘 식단을 보고 있으면 5분 간격 자동 새로고침
+	thumbRefreshWindows = []map[string]int{
+		{"start": 11*60 + 15, "end": 11*60 + 35}, // 중식 11:15~11:35
+		{"start": 17*60 + 15, "end": 17*60 + 35}, // 석식 17:15~17:35
+	}
+)
 
 type sentRecord struct {
 	MessageID string `json:"messageId"`
@@ -109,6 +132,18 @@ type SendTarget struct {
 type Schedule struct {
 	Targets []ConfigTarget `json:"targets"`
 	Times   []string       `json:"times"`
+}
+
+func (a *App) GetDefaultTimes() []string {
+	return defaultSendTimes
+}
+
+func (a *App) GetMealEndHours() map[string]int {
+	return mealEndHours
+}
+
+func (a *App) GetThumbRefreshWindows() []map[string]int {
+	return thumbRefreshWindows
 }
 
 func NewApp() *App {
@@ -573,7 +608,6 @@ func (a *App) buildAdaptiveCard(data map[string]interface{}) string {
 	dateStr := fmt.Sprintf("%d/%d/%d", now.Year(), int(now.Month()), now.Day())
 	mealNames := map[string]string{"1": "조식", "2": "중식", "3": "석식"}
 	mealEmojis := map[string]string{"1": "🌅", "2": "☀️", "3": "🌙"}
-	mealEndHour := map[string]int{"1": 10, "2": 14, "3": 20}
 
 	var bodyItems []interface{}
 	bodyItems = append(bodyItems, map[string]interface{}{
@@ -587,7 +621,7 @@ func (a *App) buildAdaptiveCard(data map[string]interface{}) string {
 			continue
 		}
 
-		isPast := hour >= mealEndHour[code]
+		isPast := hour >= mealEndHours[code]
 		contentId := fmt.Sprintf("meal-%s", code)
 		arrowDownId := fmt.Sprintf("arrow-down-%s", code)
 		arrowUpId := fmt.Sprintf("arrow-up-%s", code)
@@ -873,7 +907,7 @@ func (a *App) graphGet(path, token string) ([]byte, error) {
 // --- Config persistence ---
 
 func (a *App) configDir() string {
-	dir := filepath.Join(os.Getenv("LOCALAPPDATA"), "CJ-BapAlimi")
+	dir := filepath.Join(os.Getenv("LOCALAPPDATA"), appTitle)
 	os.MkdirAll(dir, 0755)
 	return dir
 }
@@ -960,7 +994,7 @@ func (a *App) ResetAll() error {
 // --- Autostart (Registry) ---
 
 const autoStartKey = `Software\Microsoft\Windows\CurrentVersion\Run`
-const autoStartName = "CJ-BapAlimi"
+var autoStartName = appTitle
 
 func (a *App) GetAutoStart() bool {
 	key, err := registry.OpenKey(registry.CURRENT_USER, autoStartKey, registry.QUERY_VALUE)

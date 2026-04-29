@@ -20,7 +20,7 @@ var assets embed.FS
 func ensureSingleInstance() func() {
 	kernel32 := syscall.NewLazyDLL("kernel32.dll")
 	createMutex := kernel32.NewProc("CreateMutexW")
-	name, _ := syscall.UTF16PtrFromString("Global\\CJ-BapAlimi-SingleInstance")
+	name, _ := syscall.UTF16PtrFromString("Global\\" + appTitle + "-SingleInstance")
 	handle, _, err := createMutex.Call(0, 0, uintptr(unsafe.Pointer(name)))
 	if handle == 0 || err == syscall.Errno(183) { // ERROR_ALREADY_EXISTS
 		fmt.Fprintln(os.Stderr, "already running")
@@ -35,7 +35,7 @@ func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:     "CJ-BapAlimi",
+		Title:     appTitle,
 		Width:     420,
 		Height:    680,
 		MinWidth:  420,
