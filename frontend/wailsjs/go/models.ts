@@ -23,6 +23,9 @@ export namespace main {
 	    storeName: string;
 	    targets: ConfigTarget[];
 	    times: string[];
+	    windowX?: number;
+	    windowY?: number;
+	    hasWindowPos?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -34,6 +37,9 @@ export namespace main {
 	        this.storeName = source["storeName"];
 	        this.targets = this.convertValues(source["targets"], ConfigTarget);
 	        this.times = source["times"];
+	        this.windowX = source["windowX"];
+	        this.windowY = source["windowY"];
+	        this.hasWindowPos = source["hasWindowPos"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -194,6 +200,28 @@ export namespace main {
 		    }
 		    return a;
 		}
+	}
+	export class UpdateInfo {
+	    available: boolean;
+	    currentVer: string;
+	    latestVer: string;
+	    releaseUrl: string;
+	    downloadUrl: string;
+	    releaseNote: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.currentVer = source["currentVer"];
+	        this.latestVer = source["latestVer"];
+	        this.releaseUrl = source["releaseUrl"];
+	        this.downloadUrl = source["downloadUrl"];
+	        this.releaseNote = source["releaseNote"];
+	    }
 	}
 
 }
