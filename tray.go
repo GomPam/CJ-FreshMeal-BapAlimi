@@ -166,7 +166,7 @@ func getWorkAreaNearCursor() (left, top, right, bottom int) {
 
 func (a *App) saveWindowPosition() {
 	if a.config == nil {
-		return
+		a.config = &AppConfig{}
 	}
 	hwnd := findAppHwnd()
 	if hwnd == 0 {
