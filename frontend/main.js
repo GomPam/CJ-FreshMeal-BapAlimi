@@ -337,9 +337,17 @@ async function loadMealForDate() {
   };
   const sectionIds = { '1': 'section-breakfast', '2': 'section-lunch', '3': 'section-dinner' };
 
-  Object.values(sections).forEach(el => { el.innerHTML = '<div class="loading">불러오는 중</div>'; });
-
   try {
+    const storeCfg = API ? await API.GetStoreConfig() : null;
+    if (!storeCfg || !storeCfg.idx) {
+      Object.values(sections).forEach(el => { el.innerHTML = ''; });
+      Object.values(sectionIds).forEach(id => { document.getElementById(id).style.display = 'none'; });
+      document.getElementById('meal-empty').style.display = 'block';
+      document.querySelector('#meal-empty p').textContent = '설정에서 식당을 검색해주세요.';
+      return;
+    }
+
+    Object.values(sections).forEach(el => { el.innerHTML = '<div class="loading">불러오는 중</div>'; });
     const today = getToday();
     const isToday = viewDate.getTime() === today.getTime();
     let dayData = null;
@@ -960,7 +968,6 @@ async function loadStoreConfig() {
       document.getElementById('store-current-name').textContent = cfg.name || cfg.idx;
     } else {
       document.getElementById('store-current-name').textContent = '설정 안 됨';
-      document.getElementById('store-modal').style.display = 'flex';
     }
   } catch (e) {
     console.error('Failed to load store config:', e);
